@@ -5,13 +5,15 @@ import { createClient } from "@/lib/supabase/client";
 import { StatCard } from "@/components/stat-card";
 import { formatCOP } from "@/lib/split-rules";
 import Link from "next/link";
-import type { WorkLog, MotoMaintenance, Debt } from "@/lib/types";
+import type { WorkLog, MotoMaintenance, Debt, MotoConfig, MotoSavingsGoal } from "@/lib/types";
 
 export default function DuvanDashboard() {
   const supabase = createClient();
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([]);
   const [maintenance, setMaintenance] = useState<MotoMaintenance[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
+  const [motoConfig, setMotoConfig] = useState<MotoConfig | null>(null);
+  const [savingsGoals, setSavingsGoals] = useState<MotoSavingsGoal[]>([]);
   const [duvanId, setDuvanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +31,7 @@ export default function DuvanDashboard() {
     const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
     const endOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`;
 
-    const [logsRes, maintRes, debtsRes] = await Promise.all([
+    const [logsRes, maintRes, debtsRes, configRes, goalsRes] = await Promise.all([
       supabase
         .from("work_logs")
         .select("*")
@@ -48,11 +50,23 @@ export default function DuvanDashboard() {
         .select("*")
         .eq("member_id", duvan.id)
         .eq("is_paid_off", false),
+      supabase
+        .from("moto_config")
+        .select("*")
+        .eq("member_id", duvan.id)
+        .single(),
+      supabase
+        .from("moto_savings_goals")
+        .select("*")
+        .eq("member_id", duvan.id)
+        .eq("is_active", true),
     ]);
 
     setWorkLogs(logsRes.data || []);
     setMaintenance(maintRes.data || []);
     setDebts((debtsRes.data as Debt[]) || []);
+    setMotoConfig((configRes.data as MotoConfig) || null);
+    setSavingsGoals((goalsRes.data as MotoSavingsGoal[]) || []);
     setLoading(false);
   }, [supabase]);
 
@@ -139,6 +153,41 @@ export default function DuvanDashboard() {
           Amortización moto: {formatCOP(monthlyAmortization)}/mes
         </p>
       </div>
+
+      {/* Moto cuota + bolsillo */}
+      {(motoConfig || savingsGoals.length > 0) && (
+        <Link href="/duvan/moto" className="block mb-6">
+          <div className="bg-stone-800 border border-stone-700 hover:border-amber-500/50 rounded-2xl p-5 transition-colors">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-stone-400 uppercase tracking-wide">Moto resumen</p>
+              <span className="text-xs text-stone-500">Ver todo &rarr;</span>
+            </div>
+            <div className="space-y-2">
+              {motoConfig && motoConfig.monthly_payment > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-stone-400">Cuota mensual</span>
+                  <span className="text-sm font-medium text-amber-400">{formatCOP(motoConfig.monthly_payment)}</span>
+                </div>
+              )}
+              {motoConfig && motoConfig.missed_payments > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-stone-400">Cuotas atrasadas</span>
+                  <span className="text-sm font-medium text-red-400">{motoConfig.missed_payments} ({formatCOP(motoConfig.monthly_payment * motoConfig.missed_payments)})</span>
+                </div>
+              )}
+              {savingsGoals.length > 0 && (
+                <div className="flex items-center justify-between pt-1 border-t border-stone-700">
+                  <span className="text-sm text-stone-400">Bolsillo ahorro</span>
+                  <span className="text-sm font-medium text-emerald-400">
+                    {formatCOP(savingsGoals.reduce((s, g) => s + g.saved_amount, 0))}
+                    <span className="text-stone-500"> / {formatCOP(savingsGoals.reduce((s, g) => s + g.target_amount, 0))}</span>
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </Link>
+      )}
 
       {/* Debt summary */}
       {debts.length > 0 && (

@@ -109,3 +109,47 @@ export interface DebtPlanItem {
   estimatedPayoffDate: Date;
   monthsToPayoff: number;
 }
+
+// Moto config & savings
+export type SavingsCategory =
+  | "oil"
+  | "oil_filter"
+  | "brakes_front"
+  | "brakes_rear"
+  | "tire_front"
+  | "tire_rear"
+  | "soat"
+  | "tecno"
+  | "brake_fluid"
+  | "coolant"
+  | "heavy_maintenance"
+  | "other";
+
+export interface MotoConfig {
+  id: string;
+  member_id: string;
+  registration_date: string | null;
+  monthly_payment: number;
+  missed_payments: number;
+  soat_cost: number;
+  soat_due_date: string | null;
+  tecno_cost: number;
+  tecno_due_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MotoSavingsGoal {
+  id: string;
+  member_id: string;
+  name: string;
+  category: SavingsCategory;
+  target_amount: number;
+  saved_amount: number;
+  interval_months: number;
+  last_done_date: string | null;
+  next_due_date: string | null;
+  is_active: boolean;
+  notes: string | null;
+  created_at: string;
+}
