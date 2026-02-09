@@ -70,3 +70,42 @@ export interface MotoKmLog {
   km_reading: number;
   created_at: string;
 }
+
+// Debt tracking
+export type DebtPriority = "urgente" | "normal" | "tranqui";
+
+export interface Debt {
+  id: string;
+  member_id: string;
+  creditor_name: string;
+  original_amount: number;
+  remaining_amount: number;
+  priority: DebtPriority;
+  notes: string | null;
+  is_paid_off: boolean;
+  paid_off_date: string | null;
+  created_at: string;
+}
+
+export interface DebtPayment {
+  id: string;
+  debt_id: string;
+  amount: number;
+  date: string;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface DebtConfig {
+  id: string;
+  member_id: string;
+  monthly_budget: number;
+  updated_at: string;
+}
+
+export interface DebtPlanItem {
+  debt: Debt;
+  monthlySuggested: number;
+  estimatedPayoffDate: Date;
+  monthsToPayoff: number;
+}

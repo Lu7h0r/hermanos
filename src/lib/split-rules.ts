@@ -71,3 +71,89 @@ export function formatCOPShort(amount: number): string {
   }
   return formatCOP(amount);
 }
+
+// --- Debt helpers ---
+import type { Debt, DebtPlanItem } from "./types";
+
+const PRIORITY_ORDER: Record<string, number> = {
+  urgente: 0,
+  normal: 1,
+  tranqui: 2,
+};
+
+/**
+ * Ordena deudas para plan de pago: urgente > normal > tranqui.
+ * Dentro de cada prioridad, las de menor monto primero (snowball).
+ */
+export function sortDebtsForPayoff(debts: Debt[]): Debt[] {
+  return [...debts]
+    .filter((d) => !d.is_paid_off)
+    .sort((a, b) => {
+      const pDiff = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+      if (pDiff !== 0) return pDiff;
+      return a.remaining_amount - b.remaining_amount;
+    });
+}
+
+/**
+ * Distribuye el presupuesto mensual entre deudas ordenadas.
+ * Estrategia snowball: todo el presupuesto va a la primera deuda activa,
+ * cuando se paga, pasa a la siguiente.
+ */
+export function calculateDebtPlan(
+  debts: Debt[],
+  monthlyBudget: number
+): DebtPlanItem[] {
+  if (monthlyBudget <= 0) {
+    return sortDebtsForPayoff(debts).map((debt) => ({
+      debt,
+      monthlySuggested: 0,
+      estimatedPayoffDate: new Date(2099, 0, 1),
+      monthsToPayoff: Infinity,
+    }));
+  }
+
+  const sorted = sortDebtsForPayoff(debts);
+  const result: DebtPlanItem[] = [];
+  let accumulatedMonths = 0;
+
+  for (let i = 0; i < sorted.length; i++) {
+    const debt = sorted[i];
+    const monthsNeeded = Math.ceil(debt.remaining_amount / monthlyBudget);
+    const estimatedDate = new Date();
+    estimatedDate.setMonth(estimatedDate.getMonth() + accumulatedMonths + monthsNeeded);
+
+    // La deuda actual en foco recibe todo el presupuesto
+    // Las siguientes esperan su turno (snowball)
+    const isFocused = i === 0;
+
+    result.push({
+      debt,
+      monthlySuggested: isFocused ? Math.min(monthlyBudget, debt.remaining_amount) : 0,
+      estimatedPayoffDate: estimatedDate,
+      monthsToPayoff: monthsNeeded,
+    });
+
+    accumulatedMonths += monthsNeeded;
+  }
+
+  return result;
+}
+
+/**
+ * Estima la fecha en la que Duvan queda libre de deudas.
+ */
+export function estimatePayoffDate(
+  debts: Debt[],
+  monthlyBudget: number
+): Date | null {
+  const activeDebts = debts.filter((d) => !d.is_paid_off);
+  if (activeDebts.length === 0) return null;
+  if (monthlyBudget <= 0) return null;
+
+  const totalRemaining = activeDebts.reduce((s, d) => s + d.remaining_amount, 0);
+  const months = Math.ceil(totalRemaining / monthlyBudget);
+  const date = new Date();
+  date.setMonth(date.getMonth() + months);
+  return date;
+}

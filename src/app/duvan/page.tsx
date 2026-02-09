@@ -5,12 +5,13 @@ import { createClient } from "@/lib/supabase/client";
 import { StatCard } from "@/components/stat-card";
 import { formatCOP } from "@/lib/split-rules";
 import Link from "next/link";
-import type { WorkLog, MotoMaintenance } from "@/lib/types";
+import type { WorkLog, MotoMaintenance, Debt } from "@/lib/types";
 
 export default function DuvanDashboard() {
   const supabase = createClient();
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([]);
   const [maintenance, setMaintenance] = useState<MotoMaintenance[]>([]);
+  const [debts, setDebts] = useState<Debt[]>([]);
   const [duvanId, setDuvanId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +29,7 @@ export default function DuvanDashboard() {
     const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
     const endOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`;
 
-    const [logsRes, maintRes] = await Promise.all([
+    const [logsRes, maintRes, debtsRes] = await Promise.all([
       supabase
         .from("work_logs")
         .select("*")
@@ -42,10 +43,16 @@ export default function DuvanDashboard() {
         .eq("member_id", duvan.id)
         .order("date", { ascending: false })
         .limit(20),
+      supabase
+        .from("debts")
+        .select("*")
+        .eq("member_id", duvan.id)
+        .eq("is_paid_off", false),
     ]);
 
     setWorkLogs(logsRes.data || []);
     setMaintenance(maintRes.data || []);
+    setDebts((debtsRes.data as Debt[]) || []);
     setLoading(false);
   }, [supabase]);
 
@@ -133,8 +140,40 @@ export default function DuvanDashboard() {
         </p>
       </div>
 
+      {/* Debt summary */}
+      {debts.length > 0 && (
+        <Link href="/duvan/deudas" className="block mb-6">
+          <div className="bg-stone-800 border border-red-500/30 rounded-2xl p-5 hover:border-red-500/50 transition-colors">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-stone-400 uppercase tracking-wide">Deudas pendientes</p>
+              <span className="text-xs text-stone-500">{debts.length} deuda{debts.length > 1 ? "s" : ""} &rarr;</span>
+            </div>
+            <p className="font-display text-2xl font-bold text-red-400">
+              {formatCOP(debts.reduce((s, d) => s + d.remaining_amount, 0))}
+            </p>
+            <div className="flex items-center gap-2 mt-2">
+              {debts.filter((d) => d.priority === "urgente").length > 0 && (
+                <span className="text-xs bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full">
+                  {debts.filter((d) => d.priority === "urgente").length} urgente{debts.filter((d) => d.priority === "urgente").length > 1 ? "s" : ""}
+                </span>
+              )}
+              {debts.filter((d) => d.priority === "normal").length > 0 && (
+                <span className="text-xs bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full">
+                  {debts.filter((d) => d.priority === "normal").length} normal{debts.filter((d) => d.priority === "normal").length > 1 ? "es" : ""}
+                </span>
+              )}
+              {debts.filter((d) => d.priority === "tranqui").length > 0 && (
+                <span className="text-xs bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full">
+                  {debts.filter((d) => d.priority === "tranqui").length} tranqui
+                </span>
+              )}
+            </div>
+          </div>
+        </Link>
+      )}
+
       {/* Quick links */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 mb-3">
         <Link
           href="/duvan/trabajo"
           className="bg-stone-800 border border-stone-700 hover:border-amber-500/50 rounded-2xl p-5 text-center transition-colors"
@@ -150,6 +189,17 @@ export default function DuvanDashboard() {
           <div className="text-3xl mb-2">🔧</div>
           <p className="font-medium text-stone-200">Moto</p>
           <p className="text-xs text-stone-500 mt-1">Mantenimiento</p>
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3">
+        <Link
+          href="/duvan/deudas"
+          className="bg-stone-800 border border-stone-700 hover:border-red-500/50 rounded-2xl p-5 text-center transition-colors"
+        >
+          <div className="text-3xl mb-2">💳</div>
+          <p className="font-medium text-stone-200">Deudas</p>
+          <p className="text-xs text-stone-500 mt-1">Plan de pago inteligente</p>
         </Link>
       </div>
 
