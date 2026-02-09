@@ -39,9 +39,7 @@ export default function RootLayout({
       <body
         className={`${dmSans.variable} ${outfit.variable} font-sans antialiased bg-stone-900 text-stone-50`}
       >
-        <main className="pb-20 min-h-screen">
-          {children}
-        </main>
+        {children}
         <BottomNav />
       </body>
     </html>

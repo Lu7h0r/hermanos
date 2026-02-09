@@ -3,5 +3,12 @@ export default function LoginLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <>
+      <style>{`
+        nav { display: none !important; }
+      `}</style>
+      {children}
+    </>
+  );
 }
