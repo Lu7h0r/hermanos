@@ -1,0 +1,16 @@
+{
+  "name": "Gastos Hermanos",
+  "short_name": "Gastos",
+  "description": "Reparto justo del hogar familiar",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1c1917",
+  "theme_color": "#1c1917",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
